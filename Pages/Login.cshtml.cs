@@ -184,6 +184,23 @@ namespace WebApplication1.Pages
                     return LocalRedirect(returnUrl);
                 }
 
+                if (result.RequiresTwoFactor)
+                {
+                    _logger.LogInformation("User {Email} requires 2FA verification", sanitizedEmail);
+                    
+                    if (user != null)
+                    {
+                        await _auditService.LogActivityAsync(
+                            user.Id,
+                            "Login - 2FA Required",
+                            $"2FA verification required from {ipAddress}",
+                            ipAddress,
+                            userAgent);
+                    }
+                    
+                    return RedirectToPage("/Verify2FA", new { returnUrl = returnUrl });
+                }
+
                 if (result.IsLockedOut)
                 {
                     _logger.LogWarning("User account locked out: {Email}", sanitizedEmail);

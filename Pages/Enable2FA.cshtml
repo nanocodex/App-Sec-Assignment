@@ -1,0 +1,142 @@
+@page
+@model WebApplication1.Pages.Enable2FAModel
+@{
+    ViewData["Title"] = "Enable Two-Factor Authentication";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="bi bi-shield-lock"></i> Enable Two-Factor Authentication</h3>
+                </div>
+                <div class="card-body">
+                    @if (Model.ShowQrCode)
+                    {
+                        <div class="alert alert-info">
+                            <strong><i class="bi bi-info-circle"></i> Setup Instructions:</strong>
+                            <ol class="mb-0 mt-2">
+                                <li>Install an authenticator app on your mobile device (Google Authenticator, Microsoft Authenticator, Authy, etc.)</li>
+                                <li>Scan the QR code below with your authenticator app</li>
+                                <li>Enter the 6-digit code from your authenticator app to verify</li>
+                            </ol>
+                        </div>
+
+                        <div class="text-center my-4">
+                            <h5>Scan this QR Code</h5>
+                            <img src="data:image/png;base64,@Model.QrCodeImage" alt="QR Code" class="img-fluid" style="max-width: 300px;" />
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <strong><i class="bi bi-exclamation-triangle"></i> Manual Entry:</strong>
+                            <p class="mb-0">If you can't scan the QR code, enter this key manually in your authenticator app:</p>
+                            <code class="d-block mt-2 p-2 bg-light">@Model.SecretKey</code>
+                        </div>
+
+                        <form method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="VerificationCode" class="form-label">Verification Code</label>
+                                <input asp-for="VerificationCode" class="form-control form-control-lg text-center" 
+                                       placeholder="000000" maxlength="6" autocomplete="off" autofocus />
+                                <span asp-validation-for="VerificationCode" class="text-danger"></span>
+                                <small class="form-text text-muted">Enter the 6-digit code from your authenticator app</small>
+                            </div>
+
+                            <input type="hidden" asp-for="SecretKey" />
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-check-circle"></i> Verify and Enable 2FA
+                                </button>
+                                <a asp-page="/Index" class="btn btn-secondary">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    }
+                    else if (Model.RecoveryCodes != null && Model.RecoveryCodes.Any())
+                    {
+                        <div class="alert alert-success">
+                            <h5><i class="bi bi-check-circle"></i> Two-Factor Authentication Enabled Successfully!</h5>
+                            <p>Your account is now protected with 2FA.</p>
+                        </div>
+
+                        <div class="alert alert-danger">
+                            <h5><i class="bi bi-exclamation-triangle-fill"></i> Important: Save Your Recovery Codes</h5>
+                            <p>Store these recovery codes in a safe place. You can use them to access your account if you lose your authenticator device.</p>
+                            <p class="mb-0"><strong>Each code can only be used once.</strong></p>
+                        </div>
+
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">Your Recovery Codes:</h6>
+                                <div class="row">
+                                    @for (int i = 0; i < Model.RecoveryCodes.Count; i++)
+                                    {
+                                        <div class="col-md-6 mb-2">
+                                            <code class="d-block p-2 bg-white border">@Model.RecoveryCodes[i]</code>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button onclick="window.print()" class="btn btn-outline-primary">
+                                <i class="bi bi-printer"></i> Print Recovery Codes
+                            </button>
+                            <button onclick="downloadRecoveryCodes()" class="btn btn-outline-secondary">
+                                <i class="bi bi-download"></i> Download Recovery Codes
+                            </button>
+                            <a asp-page="/Index" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> I've Saved My Recovery Codes
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    
+    @if (Model.RecoveryCodes != null && Model.RecoveryCodes.Any())
+    {
+        <script>
+            function downloadRecoveryCodes() {
+                const codes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RecoveryCodes));
+                const text = "Two-Factor Authentication Recovery Codes\n" +
+                           "==========================================\n\n" +
+                           "IMPORTANT: Keep these codes safe and secure!\n" +
+                           "Each code can only be used once.\n\n" +
+                           "Recovery Codes:\n" +
+                           codes.join('\n') +
+                           "\n\n" +
+                           "Generated: " + new Date().toLocaleString();
+                
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '2FA-Recovery-Codes.txt';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+        </script>
+    }
+}
+
+<style>
+    @@media print {
+        .btn, nav, footer {
+            display: none !important;
+        }
+    }
+</style>

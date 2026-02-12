@@ -29,10 +29,15 @@
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/ActiveSessions">
-                                    <i class="bi bi-shield-lock"></i> Active Sessions
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" id="securityDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-shield-lock"></i> Security
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="securityDropdown">
+                                    <li><a class="dropdown-item" asp-page="/Manage2FA"><i class="bi bi-shield-check"></i> Two-Factor Authentication</a></li>
+                                    <li><a class="dropdown-item" asp-page="/ActiveSessions"><i class="bi bi-list-ul"></i> Active Sessions</a></li>
+                                    <li><a class="dropdown-item" asp-page="/AuditLogs"><i class="bi bi-journal-text"></i> Audit Logs</a></li>
+                                </ul>
                             </li>
                         }
                     </ul>

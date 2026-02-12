@@ -42,8 +42,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
     // Configure sign-in settings
     options.SignIn.RequireConfirmedEmail = false;
+    
+    // Configure token settings for 2FA
+    options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultAuthenticatorProvider;
 })
 .AddEntityFrameworkStores<AuthDbContext>()
+.AddDefaultTokenProviders()
 .AddPasswordValidator<CustomPasswordValidator>();
 
 // Configure application cookie
@@ -79,6 +83,9 @@ builder.Services.AddScoped<IInputSanitizationService, InputSanitizationService>(
 
 // Register reCAPTCHA service
 builder.Services.AddHttpClient<IReCaptchaService, ReCaptchaService>();
+
+// Register Two-Factor Authentication service
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 
 // Register background service for session cleanup
 builder.Services.AddHostedService<SessionCleanupService>();
