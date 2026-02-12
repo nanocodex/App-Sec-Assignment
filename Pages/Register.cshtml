@@ -1,0 +1,282 @@
+﻿@page
+@model WebApplication1.Pages.RegisterModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ViewData["Title"] = "Register";
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/password-strength.js"></script>
+    <script src="~/js/input-validation.js" asp-append-version="true"></script>
+    <script>
+        var formSubmitted = false;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            var registerForm = document.getElementById('registerForm');
+            
+            // Real-time validation
+            const firstNameInput = document.getElementById('firstName');
+            const lastNameInput = document.getElementById('lastName');
+            const emailInput = document.getElementById('email');
+            const mobileInput = document.getElementById('mobile');
+            const creditCardInput = document.getElementById('creditCard');
+            const billingInput = document.getElementById('billing');
+            const shippingInput = document.getElementById('shipping');
+            
+            // First Name validation
+            if (firstNameInput) {
+                firstNameInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateName(this.value, 'First name');
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Last Name validation
+            if (lastNameInput) {
+                lastNameInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateName(this.value, 'Last name');
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Email validation
+            if (emailInput) {
+                emailInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateEmail(this.value);
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Mobile validation and formatting
+            if (mobileInput) {
+                mobileInput.addEventListener('input', function() {
+                    formatMobile(this);
+                });
+                
+                mobileInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateMobile(this.value);
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Credit Card validation and formatting
+            if (creditCardInput) {
+                creditCardInput.addEventListener('input', function() {
+                    formatCreditCard(this);
+                });
+                
+                creditCardInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateCreditCard(this.value);
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Billing address validation
+            if (billingInput) {
+                billingInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateAddress(this.value, 'Billing address');
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            // Shipping address validation
+            if (shippingInput) {
+                shippingInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateAddress(this.value, 'Shipping address');
+                    if (!result.valid) {
+                        InputValidation.showError(this, result.message);
+                    } else {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+            }
+            
+            registerForm.addEventListener('submit', function(e) {
+                if (!formSubmitted) {
+                    e.preventDefault();
+                    
+                    // Check if grecaptcha is loaded
+                    if (typeof grecaptcha === 'undefined') {
+                        alert('reCAPTCHA is not loaded. Please refresh the page and try again.');
+                        return false;
+                    }
+                    
+                    var form = this;
+                    var submitButton = form.querySelector('button[type="submit"]');
+                    
+                    // Disable submit button to prevent double submission
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+                    }
+                    
+                    grecaptcha.ready(function() {
+                        grecaptcha.execute('@Configuration["ReCaptcha:SiteKey"]', {action: 'register'}).then(function(token) {
+                            document.getElementById('g-recaptcha-response').value = token;
+                            formSubmitted = true;
+                            form.submit();
+                        }).catch(function(error) {
+                            console.error('reCAPTCHA error:', error);
+                            alert('reCAPTCHA verification failed. Please try again.');
+                            if (submitButton) {
+                                submitButton.disabled = false;
+                                submitButton.innerHTML = 'Register';
+                            }
+                            formSubmitted = false;
+                        });
+                    });
+                    
+                    return false;
+                }
+            });
+        });
+    </script>
+}
+
+<div class="container mt-5">
+	<div class="row justify-content-center align-items-center">
+		<div class="col-sm-12 col-md-12 col-lg-6">
+			<div class="card shadow">
+				<div class="card-header bg-primary text-white">
+					<h3 class="mb-0">Register New Account</h3>
+				</div>
+				<div class="card-body">
+					<form method="post" enctype="multipart/form-data" id="registerForm">
+						<div asp-validation-summary="All" class="text-danger"></div>
+
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle"></i>
+								All fields are required. Your data will be encrypted and stored securely.
+							</small>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.FirstName"></label>
+							<input type="text" asp-for="RModel.FirstName" class="form-control" id="firstName" 
+								   placeholder="Enter your first name" maxlength="50" />
+							<span asp-validation-for="RModel.FirstName" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.LastName"></label>
+							<input type="text" asp-for="RModel.LastName" class="form-control" id="lastName" 
+								   placeholder="Enter your last name" maxlength="50" />
+							<span asp-validation-for="RModel.LastName" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Email"></label>
+							<input type="text" asp-for="RModel.Email" class="form-control" id="email" 
+								   placeholder="your.email@example.com" maxlength="100" />
+							<span asp-validation-for="RModel.Email" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Mobile"></label>
+							<input type="text" asp-for="RModel.Mobile" class="form-control" id="mobile" 
+								   placeholder="81234567" maxlength="8" />
+							<small class="form-text text-muted">8 digits, starting with 8 or 9</small>
+							<span asp-validation-for="RModel.Mobile" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.CreditCard"></label>
+							<input type="text" asp-for="RModel.CreditCard" class="form-control" id="creditCard" 
+								   placeholder="1234 5678 9012 3456" maxlength="19" />
+							<small class="form-text text-muted">Your credit card will be encrypted before storage</small>
+							<span asp-validation-for="RModel.CreditCard" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Billing"></label>
+							<input type="text" asp-for="RModel.Billing" class="form-control" id="billing" 
+								   placeholder="123 Main Street, #01-234" maxlength="200" />
+							<span asp-validation-for="RModel.Billing" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Shipping"></label>
+							<input type="text" asp-for="RModel.Shipping" class="form-control" id="shipping" 
+								   placeholder="123 Main Street, #01-234" maxlength="200" />
+							<span asp-validation-for="RModel.Shipping" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Password"></label>
+							<input type="password" asp-for="RModel.Password" class="form-control" id="password-input" />
+							<span asp-validation-for="RModel.Password" class="text-danger"></span>
+							<div id="password-strength-feedback" class="mt-2"></div>
+							<div id="password-requirements" class="mt-2 small text-muted">
+								<div>Password must contain:</div>
+								<ul class="mb-0">
+									<li id="req-length" class="text-danger">At least 12 characters</li>
+									<li id="req-lowercase" class="text-danger">One lowercase letter (a-z)</li>
+									<li id="req-uppercase" class="text-danger">One uppercase letter (A-Z)</li>
+									<li id="req-number" class="text-danger">One number (0-9)</li>
+									<li id="req-special" class="text-danger">One special character</li>
+								</ul>
+							</div>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.ConfirmPassword"></label>
+							<input type="password" asp-for="RModel.ConfirmPassword" class="form-control" />
+							<span asp-validation-for="RModel.ConfirmPassword" class="text-danger"></span>
+						</div>
+
+						<div class="mb-3">
+							<label class="form-label" asp-for="RModel.Photo"></label>
+							<input type="file" accept=".jpg,.jpeg" asp-for="RModel.Photo" class="form-control" />
+							<small class="form-text text-muted">JPG/JPEG only, maximum 5MB</small>
+							<span asp-validation-for="RModel.Photo" class="text-danger"></span>
+							@if (!ViewData.ModelState.IsValid)
+							{
+								<small class="text-muted d-block">Please re-select your photo file</small>
+							}
+						</div>
+
+						<div class="d-grid gap-2">
+							<button type="submit" class="btn btn-primary btn-lg">
+								<i class="bi bi-person-plus"></i> Register
+							</button>
+						</div>
+
+						<hr class="my-4" />
+
+						<div class="text-center">
+							<p class="mb-0">Already have an account? <a asp-page="/Login">Login here</a></p>
+						</div>
+						
+						<input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response" />
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

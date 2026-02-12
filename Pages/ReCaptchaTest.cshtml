@@ -1,0 +1,137 @@
+@page
+@model WebApplication1.Pages.ReCaptchaTestModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ViewData["Title"] = "reCAPTCHA Test";
+}
+
+<div class="container mt-5">
+    <h2>reCAPTCHA Configuration Test</h2>
+    
+    @if (TempData["ValidationResult"] != null)
+    {
+        <div class="alert @(TempData["ValidationResult"].ToString() == "SUCCESS" ? "alert-success" : "alert-danger") mt-3">
+            <h4>@TempData["ValidationResult"]</h4>
+            <p>@TempData["Message"]</p>
+        </div>
+    }
+    
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            Configuration Values
+        </div>
+        <div class="card-body">
+            <p><strong>Site Key:</strong> @Configuration["ReCaptcha:SiteKey"]</p>
+            <p><strong>Secret Key Present:</strong> @(!string.IsNullOrEmpty(Configuration["ReCaptcha:SecretKey"]) ? "Yes" : "No")</p>
+            <p><strong>Score Threshold:</strong> @Configuration["ReCaptcha:ScoreThreshold"]</p>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            Test Form
+        </div>
+        <div class="card-body">
+            <form id="testForm" method="post">
+                <div class="mb-3">
+                    <label for="testInput" class="form-label">Test Input</label>
+                    <input type="text" class="form-control" id="testInput" name="testInput" placeholder="Enter anything">
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Test</button>
+                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response" />
+            </form>
+            
+            <div id="result" class="mt-3"></div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            Debug Console
+        </div>
+        <div class="card-body">
+            <div id="debugLog" style="background-color: #f5f5f5; padding: 10px; font-family: monospace; max-height: 300px; overflow-y: auto;">
+                <p>Waiting for actions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function log(message) {
+            var debugLog = document.getElementById('debugLog');
+            var timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += '<div>[' + timestamp + '] ' + message + '</div>';
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM Content Loaded');
+            
+            // Check if grecaptcha is available
+            if (typeof grecaptcha === 'undefined') {
+                log('ERROR: grecaptcha is not defined - script not loaded');
+            } else {
+                log('SUCCESS: grecaptcha is defined');
+            }
+
+            var testForm = document.getElementById('testForm');
+            var formSubmitted = false;
+
+            testForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                log('Form submit triggered');
+
+                if (formSubmitted) {
+                    log('Form already submitted, allowing...');
+                    return true;
+                }
+
+                if (typeof grecaptcha === 'undefined') {
+                    log('ERROR: grecaptcha still not loaded');
+                    document.getElementById('result').innerHTML = '<div class="alert alert-danger">reCAPTCHA script not loaded!</div>';
+                    return false;
+                }
+
+                log('Calling grecaptcha.ready()...');
+                
+                grecaptcha.ready(function() {
+                    log('grecaptcha.ready() callback executing');
+                    log('Executing grecaptcha with site key: @Configuration["ReCaptcha:SiteKey"]');
+                    
+                    grecaptcha.execute('@Configuration["ReCaptcha:SiteKey"]', {action: 'test'})
+                        .then(function(token) {
+                            log('Token received! Length: ' + token.length);
+                            log('Token preview: ' + token.substring(0, 50) + '...');
+                            
+                            document.getElementById('g-recaptcha-response').value = token;
+                            document.getElementById('result').innerHTML = 
+                                '<div class="alert alert-success">Token generated successfully! Check server logs for validation result.</div>' +
+                                '<p><strong>Token:</strong> <code>' + token.substring(0, 100) + '...</code></p>';
+                            
+                            formSubmitted = true;
+                            log('Submitting form...');
+                            testForm.submit();
+                        })
+                        .catch(function(error) {
+                            log('ERROR executing grecaptcha: ' + error.toString());
+                            document.getElementById('result').innerHTML = 
+                                '<div class="alert alert-danger">Error: ' + error.toString() + '</div>';
+                        });
+                });
+            });
+
+            log('Event listener attached to test form');
+            
+            // Check after a delay if script loaded
+            setTimeout(function() {
+                if (typeof grecaptcha !== 'undefined') {
+                    log('grecaptcha still available after 2 seconds');
+                } else {
+                    log('WARNING: grecaptcha not available after 2 seconds');
+                }
+            }, 2000);
+        });
+    </script>
+}

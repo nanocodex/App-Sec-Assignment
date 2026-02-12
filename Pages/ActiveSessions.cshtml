@@ -1,0 +1,203 @@
+﻿@page
+@model WebApplication1.Pages.ActiveSessionsModel
+@{
+    ViewData["Title"] = "Active Sessions";
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            
+            @if (TempData["InfoMessage"] != null)
+            {
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="bi bi-info-circle"></i> @TempData["InfoMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-shield-lock"></i> Active Login Sessions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.CurrentSessionId))
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>Your Current Session ID:</strong> <code>@Model.CurrentSessionId</code>
+                        </div>
+                    }
+                    
+                    @if (Model.ActiveSessions.Count == 0)
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-circle"></i> No active sessions found. This might indicate a session issue. Try logging out and logging back in.
+                        </div>
+                    }
+                    else
+                    {
+                        @if (Model.ActiveSessions.Count > 1)
+                        {
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Multiple Login Detection:</strong> You have @Model.ActiveSessions.Count active session(s). 
+                                If you see sessions you don't recognize, terminate them immediately and change your password.
+                            </div>
+                            
+                            <div class="mb-3">
+                                <form method="post" asp-page-handler="TerminateAllOtherSessions" class="d-inline">
+                                    <button type="submit" class="btn btn-warning" 
+                                            onclick="return confirm('⚠️ WARNING: This will log out ALL other devices and browser sessions.\n\nOnly your current session will remain active.\n\nAre you sure you want to continue?');">
+                                        <i class="bi bi-shield-x"></i> Terminate All Other Sessions
+                                    </button>
+                                </form>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-info-circle"></i> This will log out all other devices while keeping your current session active.
+                                </small>
+                            </div>
+                        }
+
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Login Time</th>
+                                        <th>Last Activity</th>
+                                        <th>IP Address</th>
+                                        <th>Device/Browser</th>
+                                        <th>Expires</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var session in Model.ActiveSessions)
+                                    {
+                                        var isCurrent = !string.IsNullOrEmpty(Model.CurrentSessionId) && session.SessionId == Model.CurrentSessionId;
+                                        <tr class="@(isCurrent ? "table-success" : "")">
+                                            <td>
+                                                @if (isCurrent)
+                                                {
+                                                    <span class="badge bg-success">
+                                                        <i class="bi bi-check-circle"></i> Current Session
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bi bi-exclamation-circle"></i> Other Device
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small>@session.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                            </td>
+                                            <td>
+                                                <small>@session.LastActivityAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                            </td>
+                                            <td>
+                                                <code>@session.IpAddress</code>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    @if (session.UserAgent.Contains("Chrome"))
+                                                    {
+                                                        <i class="bi bi-browser-chrome"></i>
+                                                    }
+                                                    else if (session.UserAgent.Contains("Firefox"))
+                                                    {
+                                                        <i class="bi bi-browser-firefox"></i>
+                                                    }
+                                                    else if (session.UserAgent.Contains("Edge"))
+                                                    {
+                                                        <i class="bi bi-browser-edge"></i>
+                                                    }
+                                                    else if (session.UserAgent.Contains("Safari"))
+                                                    {
+                                                        <i class="bi bi-browser-safari"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-globe"></i>
+                                                    }
+                                                    @session.UserAgent.Substring(0, Math.Min(50, session.UserAgent.Length))@(session.UserAgent.Length > 50 ? "..." : "")
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <small>@session.ExpiresAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                            </td>
+                                            <td>
+                                                @if (!isCurrent)
+                                                {
+                                                    <form method="post" asp-page-handler="TerminateSession" asp-route-sessionId="@session.Id" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger btn-sm" 
+                                                                onclick="return confirm('Are you sure you want to terminate this session? The device using this session will be logged out immediately.');">
+                                                            <i class="bi bi-x-circle"></i> Terminate
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted"><small>(Current)</small></span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="/Index" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Home
+                        </a>
+                        <form method="post" asp-page="/Logout" class="d-inline">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-info-circle-fill text-info"></i> Session Security Information
+                        </h5>
+                        <ul class="mb-0">
+                            <li><strong>Sessions automatically expire after 1 minute of inactivity</strong></li>
+                            <li>Each login from a different device or browser creates a new session</li>
+                            <li>Terminate any sessions you don't recognize immediately</li>
+                            <li>Always logout when using shared or public computers</li>
+                            <li>Sessions are securely stored and validated on every page request</li>
+                            <li>You will be automatically redirected to the login page when your session expires</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

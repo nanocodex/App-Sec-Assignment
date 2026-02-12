@@ -1,0 +1,167 @@
+@page
+@model WebApplication1.Pages.LoginModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Member Login</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="loginForm">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        @if (!string.IsNullOrEmpty(Model.TimeoutMessage))
+                        {
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                <i class="bi bi-clock-history"></i> <strong>Session Expired:</strong> @Model.TimeoutMessage
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        <div class="alert alert-info">
+                            <small>
+                                <i class="bi bi-info-circle"></i>
+                                Your account will be locked for 1 minute after 3 failed login attempts.
+                            </small>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <small>
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Session Timeout:</strong> Your session will expire after 1 minute of inactivity for security purposes.
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="LModel.Email" class="form-label"></label>
+                            <input asp-for="LModel.Email" class="form-control" id="loginEmail" 
+                                   placeholder="Enter your email" maxlength="100" />
+                            <span asp-validation-for="LModel.Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="LModel.Password" class="form-label"></label>
+                            <input asp-for="LModel.Password" class="form-control" 
+                                   placeholder="Enter your password" />
+                            <span asp-validation-for="LModel.Password" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="LModel.RememberMe" class="form-check-input" />
+                            <label asp-for="LModel.RememberMe" class="form-check-label"></label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </button>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="text-center">
+                            <p class="mb-0">Don't have an account? <a asp-page="/Register">Register here</a></p>
+                        </div>
+                        
+                        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response" />
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/input-validation.js" asp-append-version="true"></script>
+    <script>
+        var formSubmitted = false;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up reCAPTCHA and validation');
+            var loginForm = document.getElementById('loginForm');
+            var emailInput = document.getElementById('loginEmail');
+            
+            if (!loginForm) {
+                console.error('Login form not found!');
+                return;
+            }
+            
+            // Email validation on blur
+            if (emailInput) {
+                emailInput.addEventListener('blur', function() {
+                    const result = InputValidation.validateEmail(this.value);
+                    if (!result.valid && this.value) {
+                        InputValidation.showError(this, result.message);
+                    } else if (this.value) {
+                        InputValidation.showSuccess(this);
+                    }
+                });
+                
+                // Clear validation on input
+                emailInput.addEventListener('input', function() {
+                    if (this.classList.contains('is-invalid') || this.classList.contains('is-valid')) {
+                        InputValidation.clearValidation(this);
+                    }
+                });
+            }
+            
+            loginForm.addEventListener('submit', function(e) {
+                console.log('Form submit triggered. formSubmitted:', formSubmitted);
+                
+                if (!formSubmitted) {
+                    e.preventDefault();
+                    
+                    // Check if grecaptcha is loaded
+                    if (typeof grecaptcha === 'undefined') {
+                        console.error('grecaptcha is not defined');
+                        alert('reCAPTCHA is not loaded. Please refresh the page and try again.');
+                        return false;
+                    }
+                    
+                    console.log('grecaptcha is loaded, executing...');
+                    
+                    var form = this;
+                    var submitButton = form.querySelector('button[type="submit"]');
+                    
+                    // Disable submit button to prevent double submission
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+                    }
+                    
+                    grecaptcha.ready(function() {
+                        console.log('grecaptcha ready, executing with action: login');
+                        grecaptcha.execute('@Configuration["ReCaptcha:SiteKey"]', {action: 'login'}).then(function(token) {
+                            console.log('Token received, length:', token.length);
+                            document.getElementById('g-recaptcha-response').value = token;
+                            formSubmitted = true;
+                            console.log('Submitting form...');
+                            form.submit();
+                        }).catch(function(error) {
+                            console.error('reCAPTCHA error:', error);
+                            alert('reCAPTCHA verification failed: ' + error.message + '. Please try again.');
+                            if (submitButton) {
+                                submitButton.disabled = false;
+                                submitButton.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Login';
+                            }
+                            formSubmitted = false;
+                        });
+                    });
+                    
+                    return false;
+                } else {
+                    console.log('Form already submitted, allowing default behavior');
+                }
+            });
+            
+            console.log('Event listener attached to login form');
+        });
+    </script>
+}

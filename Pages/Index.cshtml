@@ -1,0 +1,78 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="container mt-5">
+    @if (Model.CurrentUser != null)
+    {
+        <div class="text-center mb-4">
+            <h1 class="display-4">Welcome, @Model.CurrentUser.FirstName!</h1>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Your Profile Information</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Full Name:</div>
+                            <div class="col-md-8">@Model.CurrentUser.FirstName @Model.CurrentUser.LastName</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Email:</div>
+                            <div class="col-md-8">@Model.CurrentUser.Email</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Mobile:</div>
+                            <div class="col-md-8">@Model.CurrentUser.Mobile</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Billing Address:</div>
+                            <div class="col-md-8">@Model.CurrentUser.Billing</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Shipping Address:</div>
+                            <div class="col-md-8">@Model.CurrentUser.Shipping</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Credit Card:</div>
+                            <div class="col-md-8">
+                                <span class="text-muted">****-****-****-@Model.DecryptedCreditCard?.Substring(Math.Max(0, Model.DecryptedCreditCard.Length - 4))</span>
+                                <small class="text-muted d-block">(Last 4 digits shown for security)</small>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-end fw-bold">Photo:</div>
+                            <div class="col-md-8">
+                                @if (!string.IsNullOrEmpty(Model.CurrentUser.PhotoPath))
+                                {
+                                    <img src="@Model.CurrentUser.PhotoPath" alt="User Photo" class="img-thumbnail" style="max-width: 200px;" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-center">
+                        <a href="/AuditLogs" class="btn btn-outline-primary">
+                            <i class="bi bi-clock-history"></i> View Activity Log
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <h1 class="display-4 mb-4">Welcome to WebApplication1</h1>
+            <p class="lead mb-4">Please login or register to access your profile.</p>
+            <div>
+                <a href="/Login" class="btn btn-primary btn-lg me-3">Login</a>
+                <a href="/Register" class="btn btn-outline-primary btn-lg">Register</a>
+            </div>
+        </div>
+    }
+</div>
