@@ -35,6 +35,25 @@ namespace WebApplication1.Pages
             _logger = logger;
         }
 
+        private static string RedactEmailForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            {
+                return "redacted";
+            }
+
+            var parts = email.Split('@');
+            var local = parts[0];
+            var domain = parts[1];
+
+            if (local.Length <= 1)
+            {
+                return $"*@{domain}";
+            }
+
+            return $"{local[0]}***@{domain}";
+        }
+
         [BindProperty]
         public required Login LModel { get; set; }
 
@@ -68,18 +87,19 @@ namespace WebApplication1.Pages
             {
                 // Sanitize email input
                 var sanitizedEmail = _sanitizationService.SanitizeInput(LModel.Email);
+                var redactedEmail = RedactEmailForLogging(sanitizedEmail);
 
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", redactedEmail);
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
 
                 if (_sanitizationService.ContainsPotentialSqlInjection(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", redactedEmail);
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
@@ -88,7 +108,7 @@ namespace WebApplication1.Pages
                 var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
                 
                 _logger.LogInformation("Attempting login for {Email}. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
-                    sanitizedEmail, 
+                    redactedEmail, 
                     !string.IsNullOrEmpty(recaptchaToken),
                     recaptchaToken?.Length ?? 0);
 
@@ -97,13 +117,13 @@ namespace WebApplication1.Pages
                 if (!isRecaptchaValid)
                 {
                     _logger.LogWarning("reCAPTCHA validation failed for login attempt: {Email}. Token was: {TokenPresent}", 
-                        sanitizedEmail, 
+                        redactedEmail, 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {Email}", sanitizedEmail);
+                _logger.LogInformation("reCAPTCHA validation successful for {Email}", redactedEmail);
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -186,7 +206,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {Email} requires 2FA verification", sanitizedEmail);
+                    _logger.LogInformation("User {Email} requires 2FA verification", redactedEmail);
                     
                     if (user != null)
                     {
