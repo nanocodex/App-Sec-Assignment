@@ -116,23 +116,23 @@ namespace WebApplication1.Pages
                 // Verify reCAPTCHA token
                 var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
                 
-                _logger.LogInformation("Attempting login for {Email}. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
-                    maskedEmail, 
+                _logger.LogInformation("Attempting login. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
                     !string.IsNullOrEmpty(recaptchaToken),
                     recaptchaToken?.Length ?? 0);
 
                 var isRecaptchaValid = await _reCaptchaService.VerifyTokenAsync(recaptchaToken, "login");
 
+
                 if (!isRecaptchaValid)
                 {
-                    _logger.LogWarning("reCAPTCHA validation failed for login attempt: {Email}. Token was: {TokenPresent}", 
-                        maskedEmail, 
+                    _logger.LogWarning("reCAPTCHA validation failed for login attempt. Token was: {TokenPresent}", 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {Email}", maskedEmail);
+                _logger.LogInformation("reCAPTCHA validation successful for login attempt");
+
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -250,7 +250,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsNotAllowed)
                 {
-                    _logger.LogWarning("User not allowed to sign in: {Email}", maskedEmail);
+                    _logger.LogWarning("User not allowed to sign in");
                     
                     if (user != null)
                     {
@@ -266,7 +266,7 @@ namespace WebApplication1.Pages
                     return Page();
                 }
 
-                _logger.LogWarning("Invalid login attempt for: {Email}", maskedEmail);
+                _logger.LogWarning("Invalid login attempt");
                 
                 if (user != null)
                 {
