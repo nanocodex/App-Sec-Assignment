@@ -39,6 +39,28 @@ namespace WebApplication1.Pages
 
             return visiblePrefix + maskedMiddle + visibleSuffix + domainPart;
         }
+
+        private string GetEmailHash(string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return string.Empty;
+            }
+
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(email);
+                var hashBytes = sha256.ComputeHash(bytes);
+                var sb = new StringBuilder(hashBytes.Length * 2);
+                foreach (var b in hashBytes)
+                {
+                    sb.Append(b.ToString("x2"));
+                }
+
+                // Return a shortened hash for log readability; still non-reversible.
+                return sb.ToString().Substring(0, 8);
+            }
+        }
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuditService _auditService;
@@ -186,7 +208,7 @@ namespace WebApplication1.Pages
 
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("User logged in successfully: {Email}", maskedEmail);
+                    _logger.LogInformation("User logged in successfully.");
                     
                     if (user != null)
                     {
