@@ -175,7 +175,7 @@ namespace WebApplication1.Pages
                         ipAddress,
                         userAgent);
 
-                    _logger.LogInformation("New user registered successfully: {Email}", sanitizedEmail);
+                    _logger.LogInformation("New user registered successfully. UserId: {UserId}", user.Id);
 
                     await _signInManager.SignInAsync(user, false);
                     return RedirectToPage("Index");
