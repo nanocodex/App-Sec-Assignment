@@ -29,7 +29,9 @@ namespace WebApplication1.Pages
             
             if (!string.IsNullOrEmpty(recaptchaToken))
             {
-                _logger.LogInformation("Token preview: {TokenPreview}...", recaptchaToken.Substring(0, Math.Min(50, recaptchaToken.Length)));
+                var tokenPreview = recaptchaToken.Substring(0, Math.Min(50, recaptchaToken.Length));
+                var sanitizedPreview = tokenPreview.Replace("\r", string.Empty).Replace("\n", string.Empty);
+                _logger.LogInformation("Token preview: {TokenPreview}...", sanitizedPreview);
             }
 
             var isValid = await _reCaptchaService.VerifyTokenAsync(recaptchaToken, "test");
