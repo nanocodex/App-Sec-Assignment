@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using WebApplication1.Model;
 using WebApplication1.Services;
 using WebApplication1.ViewModels;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WebApplication1.Pages
 {
@@ -54,6 +56,25 @@ namespace WebApplication1.Pages
             return $"{local[0]}***@{domain}";
         }
 
+        private static string GetEmailHashForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return "unknown";
+            }
+
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(email);
+            var hashBytes = sha256.ComputeHash(bytes);
+            var sb = new StringBuilder(hashBytes.Length * 2);
+            foreach (var b in hashBytes)
+            {
+                sb.Append(b.ToString("x2"));
+            }
+
+            return sb.ToString();
+        }
+
         [BindProperty]
         public required Login LModel { get; set; }
 
@@ -88,6 +109,7 @@ namespace WebApplication1.Pages
                 // Sanitize email input
                 var sanitizedEmail = _sanitizationService.SanitizeInput(LModel.Email);
                 var redactedEmail = RedactEmailForLogging(sanitizedEmail);
+                var emailHashForLogging = GetEmailHashForLogging(sanitizedEmail);
 
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
@@ -115,14 +137,14 @@ namespace WebApplication1.Pages
 
                 if (!isRecaptchaValid)
                 {
-                    _logger.LogWarning("reCAPTCHA validation failed for login attempt: {Email}. Token was: {TokenPresent}", 
-                        redactedEmail, 
+                    _logger.LogWarning("reCAPTCHA validation failed for login attempt: {EmailHash}. Token was: {TokenPresent}", 
+                        emailHashForLogging, 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {Email}", redactedEmail);
+                _logger.LogInformation("reCAPTCHA validation successful for {EmailHash}", emailHashForLogging);
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -205,7 +227,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {Email} requires 2FA verification", redactedEmail);
+                    _logger.LogInformation("User {EmailHash} requires 2FA verification", emailHashForLogging);
                     
                     if (user != null)
                     {
