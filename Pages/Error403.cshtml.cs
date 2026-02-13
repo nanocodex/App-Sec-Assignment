@@ -13,7 +13,11 @@ namespace WebApplication1.Pages
 
         public void OnGet()
         {
-            _logger.LogWarning("403 Error - Access denied: {Path}", HttpContext.Request.Path);
+            var safePath = HttpContext.Request.Path.ToString()
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
+
+            _logger.LogWarning("403 Error - Access denied: {Path}", safePath);
         }
     }
 }
