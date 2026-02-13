@@ -9,6 +9,34 @@ namespace WebApplication1.Pages
 {
     public class LoginModel : PageModel
     {
+        private string MaskEmail(string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return string.Empty;
+            }
+
+            var atIndex = email.IndexOf('@');
+            if (atIndex <= 1)
+            {
+                // Not a typical email format; avoid logging the raw value.
+                return "***";
+            }
+
+            var localPart = email.Substring(0, atIndex);
+            var domainPart = email.Substring(atIndex);
+
+            if (localPart.Length <= 2)
+            {
+                return new string('*', localPart.Length) + domainPart;
+            }
+
+            var visiblePrefix = localPart.Substring(0, 1);
+            var maskedMiddle = new string('*', localPart.Length - 2);
+            var visibleSuffix = localPart.Substring(localPart.Length - 1, 1);
+
+            return visiblePrefix + maskedMiddle + visibleSuffix + domainPart;
+        }
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuditService _auditService;
@@ -68,18 +96,19 @@ namespace WebApplication1.Pages
             {
                 // Sanitize email input
                 var sanitizedEmail = _sanitizationService.SanitizeInput(LModel.Email);
+                var maskedEmail = MaskEmail(sanitizedEmail);
 
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", maskedEmail);
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
 
                 if (_sanitizationService.ContainsPotentialSqlInjection(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", maskedEmail);
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
@@ -88,7 +117,7 @@ namespace WebApplication1.Pages
                 var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
                 
                 _logger.LogInformation("Attempting login for {Email}. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
-                    sanitizedEmail, 
+                    maskedEmail, 
                     !string.IsNullOrEmpty(recaptchaToken),
                     recaptchaToken?.Length ?? 0);
 
@@ -97,13 +126,13 @@ namespace WebApplication1.Pages
                 if (!isRecaptchaValid)
                 {
                     _logger.LogWarning("reCAPTCHA validation failed for login attempt: {Email}. Token was: {TokenPresent}", 
-                        sanitizedEmail, 
+                        maskedEmail, 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {Email}", sanitizedEmail);
+                _logger.LogInformation("reCAPTCHA validation successful for {Email}", maskedEmail);
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -186,7 +215,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {Email} requires 2FA verification", sanitizedEmail);
+                    _logger.LogInformation("User {Email} requires 2FA verification", maskedEmail);
                     
                     if (user != null)
                     {
@@ -203,7 +232,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsLockedOut)
                 {
-                    _logger.LogWarning("User account locked out: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User account locked out: {Email}", maskedEmail);
                     
                     if (user != null)
                     {
@@ -221,7 +250,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsNotAllowed)
                 {
-                    _logger.LogWarning("User not allowed to sign in: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User not allowed to sign in: {Email}", maskedEmail);
                     
                     if (user != null)
                     {
@@ -237,7 +266,7 @@ namespace WebApplication1.Pages
                     return Page();
                 }
 
-                _logger.LogWarning("Invalid login attempt for: {Email}", sanitizedEmail);
+                _logger.LogWarning("Invalid login attempt for: {Email}", maskedEmail);
                 
                 if (user != null)
                 {
