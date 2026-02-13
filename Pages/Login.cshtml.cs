@@ -255,7 +255,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {Email} requires 2FA verification", maskedEmail);
+                    _logger.LogInformation("User with ID {UserId} requires 2FA verification", user?.Id);
                     
                     if (user != null)
                     {
