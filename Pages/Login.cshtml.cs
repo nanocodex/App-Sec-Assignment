@@ -92,14 +92,14 @@ namespace WebApplication1.Pages
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", redactedEmail);
+                    _logger.LogWarning("Potential XSS attack detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
 
                 if (_sanitizationService.ContainsPotentialSqlInjection(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", redactedEmail);
+                    _logger.LogWarning("Potential SQL injection detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
@@ -107,8 +107,7 @@ namespace WebApplication1.Pages
                 // Verify reCAPTCHA token
                 var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
                 
-                _logger.LogInformation("Attempting login for {Email}. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
-                    redactedEmail, 
+                _logger.LogInformation("Attempting login. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
                     !string.IsNullOrEmpty(recaptchaToken),
                     recaptchaToken?.Length ?? 0);
 
