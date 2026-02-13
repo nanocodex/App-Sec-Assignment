@@ -13,7 +13,13 @@ namespace WebApplication1.Pages
 
         public void OnGet()
         {
-            _logger.LogWarning("404 Error - Page not found: {Path}", HttpContext.Request.Path);
+            var rawPath = HttpContext.Request.Path.ToString();
+            var sanitizedPath = rawPath
+                .Replace(Environment.NewLine, string.Empty)
+                .Replace("\n", string.Empty)
+                .Replace("\r", string.Empty);
+
+            _logger.LogWarning("404 Error - Page not found: {Path}", sanitizedPath);
         }
     }
 }
