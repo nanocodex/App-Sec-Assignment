@@ -186,7 +186,7 @@ namespace WebApplication1.Pages
 
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("User logged in successfully: {Email}", sanitizedEmail);
+                    _logger.LogInformation("User logged in successfully: {Email}", maskedEmail);
                     
                     if (user != null)
                     {
