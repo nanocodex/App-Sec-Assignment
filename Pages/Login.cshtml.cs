@@ -101,14 +101,14 @@ namespace WebApplication1.Pages
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", maskedEmail);
+                    _logger.LogWarning("Potential XSS attack detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
 
                 if (_sanitizationService.ContainsPotentialSqlInjection(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", maskedEmail);
+                    _logger.LogWarning("Potential SQL injection detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
