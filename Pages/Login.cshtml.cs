@@ -11,6 +11,34 @@ namespace WebApplication1.Pages
 {
     public class LoginModel : PageModel
     {
+        private string MaskEmail(string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return string.Empty;
+            }
+
+            var atIndex = email.IndexOf('@');
+            if (atIndex <= 1)
+            {
+                // Not a typical email format; avoid logging the raw value.
+                return "***";
+            }
+
+            var localPart = email.Substring(0, atIndex);
+            var domainPart = email.Substring(atIndex);
+
+            if (localPart.Length <= 2)
+            {
+                return new string('*', localPart.Length) + domainPart;
+            }
+
+            var visiblePrefix = localPart.Substring(0, 1);
+            var maskedMiddle = new string('*', localPart.Length - 2);
+            var visibleSuffix = localPart.Substring(localPart.Length - 1, 1);
+
+            return visiblePrefix + maskedMiddle + visibleSuffix + domainPart;
+        }
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuditService _auditService;
@@ -108,8 +136,7 @@ namespace WebApplication1.Pages
             {
                 // Sanitize email input
                 var sanitizedEmail = _sanitizationService.SanitizeInput(LModel.Email);
-                var redactedEmail = RedactEmailForLogging(sanitizedEmail);
-                var emailHashForLogging = GetEmailHashForLogging(sanitizedEmail);
+                var maskedEmail = MaskEmail(sanitizedEmail);
 
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
@@ -135,16 +162,17 @@ namespace WebApplication1.Pages
 
                 var isRecaptchaValid = await _reCaptchaService.VerifyTokenAsync(recaptchaToken, "login");
 
+
                 if (!isRecaptchaValid)
                 {
-                    _logger.LogWarning("reCAPTCHA validation failed for login attempt: {EmailHash}. Token was: {TokenPresent}", 
-                        emailHashForLogging, 
+                    _logger.LogWarning("reCAPTCHA validation failed for login attempt. Token was: {TokenPresent}", 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {EmailHash}", emailHashForLogging);
+                _logger.LogInformation("reCAPTCHA validation successful for login attempt");
+
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -227,7 +255,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {EmailHash} requires 2FA verification", emailHashForLogging);
+                    _logger.LogInformation("User {Email} requires 2FA verification", maskedEmail);
                     
                     if (user != null)
                     {
@@ -244,7 +272,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsLockedOut)
                 {
-                    _logger.LogWarning("User account locked out: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User account locked out: {Email}", maskedEmail);
                     
                     if (user != null)
                     {
@@ -262,7 +290,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsNotAllowed)
                 {
-                    _logger.LogWarning("User not allowed to sign in: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User not allowed to sign in");
                     
                     if (user != null)
                     {
@@ -278,7 +306,7 @@ namespace WebApplication1.Pages
                     return Page();
                 }
 
-                _logger.LogWarning("Invalid login attempt for: {Email}", sanitizedEmail);
+                _logger.LogWarning("Invalid login attempt");
                 
                 if (user != null)
                 {
