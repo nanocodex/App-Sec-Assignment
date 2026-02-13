@@ -208,8 +208,7 @@ namespace WebApplication1.Pages
 
                 if (result.Succeeded)
                 {
-                    var emailHash = GetEmailHash(sanitizedEmail);
-                    _logger.LogInformation("User logged in successfully. Email hash: {EmailHash}", emailHash);
+                    _logger.LogInformation("User logged in successfully.");
                     
                     if (user != null)
                     {
