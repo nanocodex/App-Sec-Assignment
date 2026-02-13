@@ -272,7 +272,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsLockedOut)
                 {
-                    _logger.LogWarning("User account locked out: {Email}", maskedEmail);
+                    _logger.LogWarning("User account locked out.");
                     
                     if (user != null)
                     {
