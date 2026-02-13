@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using WebApplication1.Model;
 using WebApplication1.Services;
 using WebApplication1.ViewModels;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WebApplication1.Pages
 {
@@ -61,6 +63,44 @@ namespace WebApplication1.Pages
             _reCaptchaService = reCaptchaService;
             _sanitizationService = sanitizationService;
             _logger = logger;
+        }
+
+        private static string RedactEmailForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            {
+                return "redacted";
+            }
+
+            var parts = email.Split('@');
+            var local = parts[0];
+            var domain = parts[1];
+
+            if (local.Length <= 1)
+            {
+                return $"*@{domain}";
+            }
+
+            return $"{local[0]}***@{domain}";
+        }
+
+        private static string GetEmailHashForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return "unknown";
+            }
+
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(email);
+            var hashBytes = sha256.ComputeHash(bytes);
+            var sb = new StringBuilder(hashBytes.Length * 2);
+            foreach (var b in hashBytes)
+            {
+                sb.Append(b.ToString("x2"));
+            }
+
+            return sb.ToString();
         }
 
         [BindProperty]
