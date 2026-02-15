@@ -4,11 +4,63 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using WebApplication1.Model;
 using WebApplication1.Services;
 using WebApplication1.ViewModels;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WebApplication1.Pages
 {
     public class LoginModel : PageModel
     {
+        private string MaskEmail(string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return string.Empty;
+            }
+
+            var atIndex = email.IndexOf('@');
+            if (atIndex <= 1)
+            {
+                // Not a typical email format; avoid logging the raw value.
+                return "***";
+            }
+
+            var localPart = email.Substring(0, atIndex);
+            var domainPart = email.Substring(atIndex);
+
+            if (localPart.Length <= 2)
+            {
+                return new string('*', localPart.Length) + domainPart;
+            }
+
+            var visiblePrefix = localPart.Substring(0, 1);
+            var maskedMiddle = new string('*', localPart.Length - 2);
+            var visibleSuffix = localPart.Substring(localPart.Length - 1, 1);
+
+            return visiblePrefix + maskedMiddle + visibleSuffix + domainPart;
+        }
+
+        private string GetEmailHash(string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return string.Empty;
+            }
+
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(email);
+                var hashBytes = sha256.ComputeHash(bytes);
+                var sb = new StringBuilder(hashBytes.Length * 2);
+                foreach (var b in hashBytes)
+                {
+                    sb.Append(b.ToString("x2"));
+                }
+
+                // Return a shortened hash for log readability; still non-reversible.
+                return sb.ToString().Substring(0, 8);
+            }
+        }
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuditService _auditService;
@@ -36,6 +88,44 @@ namespace WebApplication1.Pages
             _sanitizationService = sanitizationService;
             _passwordManagement = passwordManagement;
             _logger = logger;
+        }
+
+        private static string RedactEmailForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            {
+                return "redacted";
+            }
+
+            var parts = email.Split('@');
+            var local = parts[0];
+            var domain = parts[1];
+
+            if (local.Length <= 1)
+            {
+                return $"*@{domain}";
+            }
+
+            return $"{local[0]}***@{domain}";
+        }
+
+        private static string GetEmailHashForLogging(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return "unknown";
+            }
+
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(email);
+            var hashBytes = sha256.ComputeHash(bytes);
+            var sb = new StringBuilder(hashBytes.Length * 2);
+            foreach (var b in hashBytes)
+            {
+                sb.Append(b.ToString("x2"));
+            }
+
+            return sb.ToString();
         }
 
         [BindProperty]
@@ -71,18 +161,19 @@ namespace WebApplication1.Pages
             {
                 // Sanitize email input
                 var sanitizedEmail = _sanitizationService.SanitizeInput(LModel.Email);
+                var maskedEmail = MaskEmail(sanitizedEmail);
 
                 // Check for potential attacks
                 if (_sanitizationService.ContainsPotentialXss(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential XSS attack detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential XSS attack detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
 
                 if (_sanitizationService.ContainsPotentialSqlInjection(sanitizedEmail))
                 {
-                    _logger.LogWarning("Potential SQL injection detected in login email: {Email}", sanitizedEmail);
+                    _logger.LogWarning("Potential SQL injection detected in login request.");
                     ModelState.AddModelError(string.Empty, "Invalid email format.");
                     return Page();
                 }
@@ -90,23 +181,23 @@ namespace WebApplication1.Pages
                 // Verify reCAPTCHA token
                 var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
                 
-                _logger.LogInformation("Attempting login for {Email}. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
-                    sanitizedEmail, 
+                _logger.LogInformation("Attempting login. reCAPTCHA token present: {TokenPresent}, Token length: {TokenLength}", 
                     !string.IsNullOrEmpty(recaptchaToken),
                     recaptchaToken?.Length ?? 0);
 
                 var isRecaptchaValid = await _reCaptchaService.VerifyTokenAsync(recaptchaToken, "login");
 
+
                 if (!isRecaptchaValid)
                 {
-                    _logger.LogWarning("reCAPTCHA validation failed for login attempt: {Email}. Token was: {TokenPresent}", 
-                        sanitizedEmail, 
+                    _logger.LogWarning("reCAPTCHA validation failed for login attempt. Token was: {TokenPresent}", 
                         !string.IsNullOrEmpty(recaptchaToken) ? "Present" : "Missing");
                     ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
                     return Page();
                 }
 
-                _logger.LogInformation("reCAPTCHA validation successful for {Email}", sanitizedEmail);
+                _logger.LogInformation("reCAPTCHA validation successful for login attempt");
+
 
                 var user = await _userManager.FindByEmailAsync(sanitizedEmail);
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -120,7 +211,7 @@ namespace WebApplication1.Pages
 
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("User logged in successfully: {Email}", sanitizedEmail);
+                    _logger.LogInformation("User logged in successfully.");
                     
                     if (user != null)
                     {
@@ -205,7 +296,7 @@ namespace WebApplication1.Pages
 
                 if (result.RequiresTwoFactor)
                 {
-                    _logger.LogInformation("User {Email} requires 2FA verification", sanitizedEmail);
+                    _logger.LogInformation("User with ID {UserId} requires 2FA verification", user?.Id);
                     
                     if (user != null)
                     {
@@ -222,7 +313,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsLockedOut)
                 {
-                    _logger.LogWarning("User account locked out: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User account locked out.");
                     
                     if (user != null)
                     {
@@ -240,7 +331,7 @@ namespace WebApplication1.Pages
 
                 if (result.IsNotAllowed)
                 {
-                    _logger.LogWarning("User not allowed to sign in: {Email}", sanitizedEmail);
+                    _logger.LogWarning("User not allowed to sign in");
                     
                     if (user != null)
                     {
@@ -256,7 +347,7 @@ namespace WebApplication1.Pages
                     return Page();
                 }
 
-                _logger.LogWarning("Invalid login attempt for: {Email}", sanitizedEmail);
+                _logger.LogWarning("Invalid login attempt");
                 
                 if (user != null)
                 {
