@@ -32,8 +32,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequiredLength = 12;
     options.Password.RequiredUniqueChars = 1;
 
-    // Configure lockout settings
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
+    // Configure lockout settings - automatic recovery after lockout time
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1); // Account unlocks automatically after 1 minute
     options.Lockout.MaxFailedAccessAttempts = 3;
     options.Lockout.AllowedForNewUsers = true;
 
@@ -86,6 +86,18 @@ builder.Services.AddHttpClient<IReCaptchaService, ReCaptchaService>();
 
 // Register Two-Factor Authentication service
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
+
+// Register Password Management service
+builder.Services.AddScoped<IPasswordManagementService, PasswordManagementService>();
+
+// Register Email service
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// Register SMS service
+builder.Services.AddScoped<ISmsService, SmsService>();
+
+// Register Data Migration service
+builder.Services.AddScoped<IDataMigrationService, DataMigrationService>();
 
 // Register background service for session cleanup
 builder.Services.AddHostedService<SessionCleanupService>();

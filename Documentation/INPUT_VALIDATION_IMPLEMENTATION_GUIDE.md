@@ -227,7 +227,7 @@ ModelState.AddModelError(string.Empty, "Registration failed.");
 // Show error
 InputValidation.showError(inputElement, "Email is required");
 
-// Show success
+# Show success
 InputValidation.showSuccess(inputElement);
 
 // Clear validation
@@ -365,12 +365,22 @@ Mobile: 1234567 (wrong length)
 Mobile: 71234567 (wrong prefix)
 Name: John123 (numbers not allowed)
 Password: short (too short)
-Credit Card: 1234 (invalid Luhn)
+Credit Card: 1234 5678 9012 3456 (invalid Luhn - fails validation)
+Credit Card: 4532 1488 0343 6467 (valid Luhn - passes validation)
 ```
 
 **Expected Result:**
 - ? Client-side validation error (immediate feedback)
 - ? Server-side validation error (if client-side bypassed)
+
+**Valid Test Credit Card Numbers** (all pass Luhn algorithm):
+- **Visa (16 digits)**: `4111 1111 1111 1111` ? Recommended
+- **Visa (16 digits)**: `4012 8888 8888 1881`
+- **Mastercard (16 digits)**: `5425 2334 3010 9903`
+- **American Express (15 digits)**: `3782 822463 10005`
+- **Discover (16 digits)**: `6011 1111 1111 1117`
+
+**Note:** These are test card numbers that pass both client-side JavaScript Luhn validation and server-side `[CreditCard]` attribute validation. They will be encrypted before storage in the database.
 
 ## File Structure
 

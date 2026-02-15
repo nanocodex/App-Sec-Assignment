@@ -6,6 +6,7 @@
     const patterns = {
         email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         singaporeMobile: /^[89]\d{7}$/,
+        internationalMobile: /^\+\d{1,3}\d{8,12}$/,
         name: /^[\p{L}\s'\-]+$/u,
         noHtml: /<[^>]+>/,
         xssPatterns: [
@@ -43,18 +44,47 @@
                 return { valid: false, message: 'Invalid characters detected' };
             }
             
-            return { valid: true, message: '' };
+            return { valid: true, message: '' });
         },
 
         // Validate Singapore mobile number
         validateMobile: function (mobile) {
             if (!mobile) return { valid: false, message: 'Mobile number is required' };
             
-            // Remove spaces and dashes
-            mobile = mobile.replace(/[\s\-]/g, '');
+            mobile = mobile.trim();
             
-            if (!patterns.singaporeMobile.test(mobile)) {
-                return { valid: false, message: 'Mobile number must be 8 digits and start with 8 or 9' };
+            // Remove spaces for validation
+            const mobileNoSpaces = mobile.replace(/\s/g, '');
+            
+            // Check if it starts with +
+            if (mobileNoSpaces.startsWith('+')) {
+                // International format
+                if (!patterns.internationalMobile.test(mobileNoSpaces)) {
+                    return { valid: false, message: 'Invalid international mobile number format' };
+                }
+                
+                // Validate specific country codes
+                if (mobileNoSpaces.startsWith('+65')) {
+                    // Singapore: +65 followed by 8 digits
+                    if (!/^\+65\d{8}$/.test(mobileNoSpaces)) {
+                        return { valid: false, message: 'Singapore mobile number must be +65 followed by 8 digits' };
+                    }
+                } else if (mobileNoSpaces.startsWith('+60')) {
+                    // Malaysia: +60 followed by 9-10 digits
+                    if (!/^\+60\d{9,10}$/.test(mobileNoSpaces)) {
+                        return { valid: false, message: 'Malaysia mobile number must be +60 followed by 9-10 digits' };
+                    }
+                } else if (mobileNoSpaces.startsWith('+62')) {
+                    // Indonesia: +62 followed by 9-12 digits
+                    if (!/^\+62\d{9,12}$/.test(mobileNoSpaces)) {
+                        return { valid: false, message: 'Indonesia mobile number must be +62 followed by 9-12 digits' };
+                    }
+                }
+            } else {
+                // Singapore format without country code
+                if (!patterns.singaporeMobile.test(mobileNoSpaces)) {
+                    return { valid: false, message: 'Mobile number must be 8 digits and start with 8 or 9, or include country code' };
+                }
             }
             
             return { valid: true, message: '' };
@@ -85,7 +115,7 @@
             return { valid: true, message: '' };
         },
 
-        // Validate address
+        // Validate address - allows all special characters except dangerous script patterns
         validateAddress: function (address, fieldName) {
             if (!address) return { valid: false, message: `${fieldName} is required` };
             
@@ -99,12 +129,32 @@
                 return { valid: false, message: 'Address cannot exceed 200 characters' };
             }
             
-            if (!/^[a-zA-Z0-9\s.,\-#/()]+$/.test(address)) {
-                return { valid: false, message: 'Address can only contain letters, numbers, spaces, and common punctuation (.,#-/)' };
+            // Check for control characters (except newline, carriage return, tab)
+            if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(address)) {
+                return { valid: false, message: 'Address contains invalid control characters' };
             }
             
-            if (this.containsXss(address)) {
-                return { valid: false, message: 'Invalid characters detected in address' };
+            // Only block obvious XSS attack patterns, allow all other special characters
+            const xssPatterns = [
+                /<script[\s\S]*?>[\s\S]*?<\/script>/i,
+                /javascript\s*:/i,
+                /onerror\s*=/i,
+                /onload\s*=/i,
+                /onclick\s*=/i,
+                /onmouseover\s*=/i,
+                /<iframe[\s\S]*?>/i,
+                /<embed[\s\S]*?>/i,
+                /<object[\s\S]*?>/i,
+                /eval\s*\(/i,
+                /expression\s*\(/i,
+                /vbscript\s*:/i,
+                /data\s*:\s*text\/html/i
+            ];
+            
+            for (const pattern of xssPatterns) {
+                if (pattern.test(address)) {
+                    return { valid: false, message: 'Address contains potentially dangerous script patterns. Please remove script tags or event handlers' };
+                }
             }
             
             return { valid: true, message: '' };
@@ -231,13 +281,78 @@
         input.value = formattedValue;
     };
 
-    // Auto-format mobile number
+    // Auto-format mobile number with country code support
     window.formatMobile = function (input) {
-        let value = input.value.replace(/\D/g, '');
-        if (value.length > 8) {
-            value = value.substring(0, 8);
+        let value = input.value.replace(/\s/g, '');
+        
+        // Only allow digits and + at the start
+        if (value.startsWith('+')) {
+            // Keep the + and only digits after
+            value = '+' + value.substring(1).replace(/\D/g, '');
+        } else {
+            // No country code - only digits
+            value = value.replace(/\D/g, '');
         }
-        input.value = value;
+        
+        let formattedValue = value;
+        
+        // Format based on country code
+        if (value.startsWith('+65')) {
+            // Singapore: +65 9759 3160
+            const countryCode = value.substring(0, 3);
+            const number = value.substring(3);
+            if (number.length > 8) {
+                formattedValue = countryCode + ' ' + number.substring(0, 4) + ' ' + number.substring(4, 8);
+            } else if (number.length > 4) {
+                formattedValue = countryCode + ' ' + number.substring(0, 4) + ' ' + number.substring(4);
+            } else if (number.length > 0) {
+                formattedValue = countryCode + ' ' + number;
+            } else {
+                formattedValue = countryCode;
+            }
+        } else if (value.startsWith('+60')) {
+            // Malaysia: +60 12 345 6789
+            const countryCode = value.substring(0, 3);
+            const number = value.substring(3);
+            if (number.length > 10) {
+                formattedValue = countryCode + ' ' + number.substring(0, 2) + ' ' + number.substring(2, 5) + ' ' + number.substring(5, 9);
+            } else if (number.length > 5) {
+                formattedValue = countryCode + ' ' + number.substring(0, 2) + ' ' + number.substring(2, 5) + ' ' + number.substring(5);
+            } else if (number.length > 2) {
+                formattedValue = countryCode + ' ' + number.substring(0, 2) + ' ' + number.substring(2);
+            } else if (number.length > 0) {
+                formattedValue = countryCode + ' ' + number;
+            } else {
+                formattedValue = countryCode;
+            }
+        } else if (value.startsWith('+62')) {
+            // Indonesia: +62 812 3456 7890
+            const countryCode = value.substring(0, 3);
+            const number = value.substring(3);
+            if (number.length > 12) {
+                formattedValue = countryCode + ' ' + number.substring(0, 3) + ' ' + number.substring(3, 7) + ' ' + number.substring(7, 11);
+            } else if (number.length > 7) {
+                formattedValue = countryCode + ' ' + number.substring(0, 3) + ' ' + number.substring(3, 7) + ' ' + number.substring(7);
+            } else if (number.length > 3) {
+                formattedValue = countryCode + ' ' + number.substring(0, 3) + ' ' + number.substring(3);
+            } else if (number.length > 0) {
+                formattedValue = countryCode + ' ' + number;
+            } else {
+                formattedValue = countryCode;
+            }
+        } else if (value.startsWith('+')) {
+            // Other country codes - don't format, just limit length
+            if (value.length > 15) {
+                formattedValue = value.substring(0, 15);
+            }
+        } else {
+            // No country code - Singapore format only (8 digits max)
+            if (value.length > 8) {
+                formattedValue = value.substring(0, 8);
+            }
+        }
+        
+        input.value = formattedValue;
     };
 
 })();

@@ -200,15 +200,15 @@
 						<div class="mb-3">
 							<label class="form-label" asp-for="RModel.Mobile"></label>
 							<input type="text" asp-for="RModel.Mobile" class="form-control" id="mobile" 
-								   placeholder="81234567" maxlength="8" />
-							<small class="form-text text-muted">8 digits, starting with 8 or 9</small>
+								   placeholder="81234567 or +6597593160" maxlength="20" />
+							<small class="form-text text-muted">8 digits (e.g., 81234567) or with country code (e.g., +65 9759 3160)</small>
 							<span asp-validation-for="RModel.Mobile" class="text-danger"></span>
 						</div>
 
 						<div class="mb-3">
 							<label class="form-label" asp-for="RModel.CreditCard"></label>
 							<input type="text" asp-for="RModel.CreditCard" class="form-control" id="creditCard" 
-								   placeholder="1234 5678 9012 3456" maxlength="19" />
+								   placeholder="4111 1111 1111 1111" maxlength="19" />
 							<small class="form-text text-muted">Your credit card will be encrypted before storage</small>
 							<span asp-validation-for="RModel.CreditCard" class="text-danger"></span>
 						</div>

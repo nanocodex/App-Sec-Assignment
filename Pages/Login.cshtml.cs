@@ -15,6 +15,7 @@ namespace WebApplication1.Pages
         private readonly ISessionService _sessionService;
         private readonly IReCaptchaService _reCaptchaService;
         private readonly IInputSanitizationService _sanitizationService;
+        private readonly IPasswordManagementService _passwordManagement;
         private readonly ILogger<LoginModel> _logger;
 
         public LoginModel(
@@ -24,6 +25,7 @@ namespace WebApplication1.Pages
             ISessionService sessionService,
             IReCaptchaService reCaptchaService,
             IInputSanitizationService sanitizationService,
+            IPasswordManagementService passwordManagement,
             ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
@@ -32,6 +34,7 @@ namespace WebApplication1.Pages
             _sessionService = sessionService;
             _reCaptchaService = reCaptchaService;
             _sanitizationService = sanitizationService;
+            _passwordManagement = passwordManagement;
             _logger = logger;
         }
 
@@ -121,6 +124,22 @@ namespace WebApplication1.Pages
                     
                     if (user != null)
                     {
+                        // Check if password must be changed
+                        var mustChangePassword = await _passwordManagement.MustChangePasswordAsync(user.Id);
+                        if (mustChangePassword)
+                        {
+                            _logger.LogInformation("User {UserId} must change password", user.Id);
+                            await _auditService.LogActivityAsync(
+                                user.Id,
+                                "Login - Password Change Required",
+                                $"Password expired, change required from {ipAddress}",
+                                ipAddress,
+                                userAgent);
+                            
+                            TempData["InfoMessage"] = "Your password has expired. You must change it to continue.";
+                            return RedirectToPage("/ChangePassword");
+                        }
+
                         // Check for existing active sessions
                         var activeSessionCount = await _sessionService.GetActiveSessionCountAsync(user.Id);
                         

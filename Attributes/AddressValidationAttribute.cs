@@ -4,7 +4,8 @@ using System.Text.RegularExpressions;
 namespace WebApplication1.Attributes
 {
     /// <summary>
-    /// Validates address format - allows alphanumeric, spaces, common punctuation but blocks script injection
+    /// Validates address format - allows all printable characters but blocks script injection attempts
+    /// Security is provided by HTML encoding on storage and display, not input restriction
     /// </summary>
     public class AddressValidationAttribute : ValidationAttribute
     {
@@ -33,27 +34,35 @@ namespace WebApplication1.Attributes
                 return new ValidationResult("Address is too long. Maximum 200 characters.");
             }
 
-            // Allow alphanumeric, spaces, and common punctuation: . , - # /
-            // Block special characters that could be used in injection attacks
-            if (!Regex.IsMatch(address, @"^[a-zA-Z0-9\s.,\-#/()]+$"))
+            // Block null characters and control characters (except newline, carriage return, tab)
+            if (Regex.IsMatch(address, @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]"))
             {
-                return new ValidationResult("Address can only contain letters, numbers, spaces, and common punctuation (.,#-/).");
+                return new ValidationResult("Address contains invalid control characters.");
             }
 
-            // Check for XSS patterns
+            // Check for obvious XSS attack patterns
             var xssPatterns = new[]
             {
-                @"<script",
-                @"javascript:",
+                @"<script[\s\S]*?>[\s\S]*?</script>",
+                @"javascript\s*:",
                 @"onerror\s*=",
-                @"onclick\s*="
+                @"onload\s*=",
+                @"onclick\s*=",
+                @"onmouseover\s*=",
+                @"<iframe[\s\S]*?>",
+                @"<embed[\s\S]*?>",
+                @"<object[\s\S]*?>",
+                @"eval\s*\(",
+                @"expression\s*\(",
+                @"vbscript\s*:",
+                @"data\s*:\s*text/html"
             };
 
             foreach (var pattern in xssPatterns)
             {
                 if (Regex.IsMatch(address, pattern, RegexOptions.IgnoreCase))
                 {
-                    return new ValidationResult("Invalid characters detected in address.");
+                    return new ValidationResult("Address contains potentially dangerous script patterns. Please remove script tags or event handlers.");
                 }
             }
 

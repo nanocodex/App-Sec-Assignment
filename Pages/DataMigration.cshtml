@@ -1,0 +1,217 @@
+@page
+@model DataMigrationModel
+@{
+    ViewData["Title"] = "Data Migration - Encode Address Fields";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">
+                        <i class="bi bi-database-gear"></i> Data Migration Tool
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill"></i> <strong>Success!</strong> @TempData["SuccessMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i> <strong>Error!</strong> @TempData["ErrorMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> About This Migration</h5>
+                        <p class="mb-2">
+                            This tool will <strong>HTML-encode all special characters</strong> in the Billing and Shipping address fields 
+                            for all existing users in the database.
+                        </p>
+                        <hr />
+                        <h6>What this does:</h6>
+                        <ul class="mb-2">
+                            <li>Scans all user records in the database</li>
+                            <li>Identifies Billing and Shipping fields with special characters (<code>&lt; &gt; &amp; " ' $ % ^ * ( ) { } [ ]</code>)</li>
+                            <li>HTML-encodes these characters to prevent XSS attacks</li>
+                            <li>Updates the database with encoded values</li>
+                        </ul>
+                        <h6>Example transformations:</h6>
+                        <ul class="mb-0">
+                            <li><code>$%^&* &&^& *&*&*&</code> ? <code>&amp;dollar;&amp;percnt;&amp;Hat;&amp;amp;&amp;ast; &amp;amp;&amp;amp;&amp;Hat;&amp;amp; &amp;ast;&amp;amp;&amp;ast;&amp;amp;&amp;ast;&amp;amp;</code></li>
+                            <li><code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> ? <code>&amp;lt;script&amp;gt;alert(&amp;#x27;XSS&amp;#x27;)&amp;lt;/script&amp;gt;</code></li>
+                            <li><code>123 Main St #05-67</code> ? <code>123 Main St &amp;num;05-67</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h5><i class="bi bi-exclamation-triangle"></i> Important Notes</h5>
+                        <ul class="mb-0">
+                            <li><strong>Backup your database</strong> before running this migration</li>
+                            <li>This process is <strong>idempotent</strong> - safe to run multiple times</li>
+                            <li>Already encoded values will not be double-encoded</li>
+                            <li>The migration may take time depending on the number of users</li>
+                            <li>All changes will be logged for audit purposes</li>
+                        </ul>
+                    </div>
+
+                    @if (!Model.HasRun)
+                    {
+                        <form method="post">
+                            <div class="d-grid gap-2">
+                                <button type="submit" asp-page-handler="EncodeAddresses" class="btn btn-warning btn-lg" 
+                                        onclick="return confirm('Are you sure you want to encode all address fields? This will modify database records. Make sure you have a backup!');">
+                                    <i class="bi bi-play-circle-fill"></i> Run Address Encoding Migration
+                                </button>
+                            </div>
+                        </form>
+                    }
+
+                    @if (Model.HasRun && Model.MigrationResult != null)
+                    {
+                        <div class="mt-4">
+                            <h4>Migration Results</h4>
+                            <hr />
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Total Records</h5>
+                                            <h2 class="text-primary">@Model.MigrationResult.RecordsProcessed</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Successfully Updated</h5>
+                                            <h2 class="text-success">@Model.MigrationResult.RecordsUpdated</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Failed</h5>
+                                            <h2 class="@(Model.MigrationResult.RecordsFailed > 0 ? "text-danger" : "text-muted")">
+                                                @Model.MigrationResult.RecordsFailed
+                                            </h2>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (Model.MigrationResult.Messages.Any())
+                            {
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="bi bi-list-check"></i> Processing Details</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                        <ul class="list-unstyled mb-0 small">
+                                            @foreach (var message in Model.MigrationResult.Messages)
+                                            {
+                                                <li class="mb-1">
+                                                    @if (message.StartsWith("?"))
+                                                    {
+                                                        <span class="text-success">@message</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">@message</span>
+                                                    }
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (Model.MigrationResult.Errors.Any())
+                            {
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <h6 class="mb-0"><i class="bi bi-exclamation-circle-fill"></i> Errors</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                        <ul class="list-unstyled mb-0 small text-danger">
+                                            @foreach (var error in Model.MigrationResult.Errors)
+                                            {
+                                                <li class="mb-1">@error</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="mt-3">
+                                <a href="/DataMigration" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-clockwise"></i> Run Again
+                                </a>
+                                <a href="/Index" class="btn btn-primary">
+                                    <i class="bi bi-house-door"></i> Return to Home
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="card-footer text-muted">
+                    <small>
+                        <i class="bi bi-shield-lock"></i> This operation is logged for security audit purposes.
+                    </small>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-question-circle"></i> FAQ</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>What happens to existing data?</h6>
+                        <p class="small">
+                            Existing data is converted from plaintext special characters to HTML-encoded entities. 
+                            For example, <code>&lt;</code> becomes <code>&amp;lt;</code>. When displayed in Razor pages with <code>@@Model.Field</code>, 
+                            the browser will correctly render the original characters.
+                        </p>
+
+                        <h6>Will this affect how data is displayed?</h6>
+                        <p class="small">
+                            No. Razor Pages automatically decode HTML entities when displaying. Users will see the original text, 
+                            but it will be safe from XSS attacks because the special characters are encoded in the database.
+                        </p>
+
+                        <h6>Can I run this multiple times?</h6>
+                        <p class="small mb-0">
+                            Yes. The migration is idempotent - it checks if data is already encoded and skips it. 
+                            Running it multiple times won't cause double-encoding.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-scroll to results if migration has run
+        @if (Model.HasRun)
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                document.querySelector('h4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            </text>
+        }
+    </script>
+}

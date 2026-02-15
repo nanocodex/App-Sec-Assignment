@@ -42,6 +42,30 @@ namespace WebApplication1.Services
             return _htmlEncoder.Encode(html);
         }
 
+        public string AggressiveHtmlEncode(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            var result = new StringBuilder();
+
+            foreach (char c in input)
+            {
+                // Encode ALL non-alphanumeric characters
+                if (char.IsLetterOrDigit(c) || char.IsWhiteSpace(c))
+                {
+                    result.Append(c);
+                }
+                else
+                {
+                    // Encode as HTML entity (decimal)
+                    result.Append($"&#{(int)c};");
+                }
+            }
+
+            return result.ToString();
+        }
+
         public string StripHtml(string html)
         {
             if (string.IsNullOrEmpty(html))

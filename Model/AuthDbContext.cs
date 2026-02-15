@@ -9,6 +9,8 @@ namespace WebApplication1.Model
 
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<UserSession> UserSessions { get; set; }
+        public DbSet<PasswordHistory> PasswordHistories { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
         public AuthDbContext(IConfiguration configuration)
         {
@@ -19,6 +21,23 @@ namespace WebApplication1.Model
         {
             string connectionString = _configuration.GetConnectionString("AuthConnectionString"); 
             optionsBuilder.UseSqlServer(connectionString);
+        }
+        
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+            
+            builder.Entity<PasswordHistory>()
+                .HasOne(ph => ph.User)
+                .WithMany()
+                .HasForeignKey(ph => ph.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            builder.Entity<PasswordResetToken>()
+                .HasOne(prt => prt.User)
+                .WithMany()
+                .HasForeignKey(prt => prt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

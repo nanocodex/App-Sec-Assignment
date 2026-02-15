@@ -147,12 +147,19 @@
 #### Test Case 4.3: Valid Credit Card
 **Steps:**
 1. Go to `/Register`
-2. Enter credit card: `4532 0151 1416 6950` (valid test card)
+2. Enter credit card: `4111 1111 1111 1111` (valid Visa test card)
 3. Click on another field
 
 **Expected Result:**
 - ? Green border (validation success)
 - Number auto-formatted with spaces
+
+**Note:** Use these valid test credit card numbers:
+- **Visa**: `4111 1111 1111 1111` (recommended)
+- **Visa**: `4012 8888 8888 1881`
+- **Mastercard**: `5425 2334 3010 9903`
+- **Amex**: `3782 822463 10005`
+- **Discover**: `6011 1111 1111 1117`
 
 ### 5. Password Validation Tests
 
@@ -292,7 +299,7 @@
    - Last Name: `Doe`
    - Email: `john.doe@example.com`
    - Mobile: `81234567`
-   - Credit Card: `4532015114166950`
+   - Credit Card: `4111111111111111` (or `4111 1111 1111 1111` with spaces)
    - Billing: `123 Main Street, #01-234, Singapore 123456`
    - Shipping: `456 Orchard Road, #02-345, Singapore 654321`
    - Password: `MySecureP@ssw0rd123`

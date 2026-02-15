@@ -28,7 +28,17 @@ namespace WebApplication1.Pages
             _logger = logger;
         }
 
+        public async Task<IActionResult> OnGetAsync()
+        {
+            return await PerformLogoutAsync();
+        }
+
         public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+        {
+            return await PerformLogoutAsync();
+        }
+
+        private async Task<IActionResult> PerformLogoutAsync()
         {
             var user = await _userManager.GetUserAsync(User);
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();

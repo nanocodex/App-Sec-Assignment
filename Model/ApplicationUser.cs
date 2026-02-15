@@ -15,5 +15,10 @@ namespace WebApplication1.Model
         // Two-Factor Authentication properties
         public bool IsTwoFactorEnabled { get; set; } = false;
         public string? TwoFactorRecoveryCodes { get; set; }  // Encrypted recovery codes
+        
+        // Password age tracking
+        public DateTime? LastPasswordChangeDate { get; set; }
+        public DateTime? PasswordExpiryDate { get; set; }
+        public bool MustChangePassword { get; set; } = false;
     }
 }

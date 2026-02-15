@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true" />
     <script src="https://www.google.com/recaptcha/api.js?render=@(Context.Request.HttpContext.RequestServices.GetRequiredService<IConfiguration>()["ReCaptcha:SiteKey"])"></script>
 </head>
 <body>
@@ -34,9 +33,13 @@
                                     <i class="bi bi-shield-lock"></i> Security
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="securityDropdown">
+                                    <li><a class="dropdown-item" asp-page="/ChangePassword"><i class="bi bi-key-fill"></i> Change Password</a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" asp-page="/Manage2FA"><i class="bi bi-shield-check"></i> Two-Factor Authentication</a></li>
                                     <li><a class="dropdown-item" asp-page="/ActiveSessions"><i class="bi bi-list-ul"></i> Active Sessions</a></li>
                                     <li><a class="dropdown-item" asp-page="/AuditLogs"><i class="bi bi-journal-text"></i> Audit Logs</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" asp-page="/DataMigration"><i class="bi bi-database-gear"></i> Data Migration</a></li>
                                 </ul>
                             </li>
                         }
@@ -68,6 +71,20 @@
         </nav>
     </header>
     <div class="container">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (TempData["InfoMessage"] != null)
+        {
+            <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-info-circle-fill"></i> @TempData["InfoMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
@@ -85,4 +102,4 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html>
+</html></html>

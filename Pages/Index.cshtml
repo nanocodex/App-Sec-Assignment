@@ -4,6 +4,27 @@
     ViewData["Title"] = "Home page";
 }
 
+@section Scripts {
+    <script src="~/js/display-formatter.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Format phone number
+            var phoneElement = document.getElementById('phoneDisplay');
+            if (phoneElement) {
+                var phone = phoneElement.textContent.trim();
+                phoneElement.textContent = DisplayFormatter.formatPhoneDisplay(phone);
+            }
+
+            // Format credit card
+            var cardElement = document.getElementById('cardDisplay');
+            if (cardElement) {
+                var card = cardElement.textContent.trim();
+                cardElement.textContent = DisplayFormatter.formatCreditCardDisplay(card);
+            }
+        });
+    </script>
+}
+
 <div class="container mt-5">
     @if (Model.CurrentUser != null)
     {
@@ -28,21 +49,36 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-end fw-bold">Mobile:</div>
-                            <div class="col-md-8">@Model.CurrentUser.Mobile</div>
+                            <div class="col-md-8">
+                                <span id="phoneDisplay">@Model.CurrentUser.Mobile</span>
+                            </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-end fw-bold">Billing Address:</div>
-                            <div class="col-md-8">@Model.CurrentUser.Billing</div>
+                            <div class="col-md-8">@Html.Raw(Model.CurrentUser.Billing)</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-end fw-bold">Shipping Address:</div>
-                            <div class="col-md-8">@Model.CurrentUser.Shipping</div>
+                            <div class="col-md-8">@Html.Raw(Model.CurrentUser.Shipping)</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-end fw-bold">Credit Card:</div>
                             <div class="col-md-8">
-                                <span class="text-muted">****-****-****-@Model.DecryptedCreditCard?.Substring(Math.Max(0, Model.DecryptedCreditCard.Length - 4))</span>
-                                <small class="text-muted d-block">(Last 4 digits shown for security)</small>
+                                @if (Model.DecryptedCreditCard == "****")
+                                {
+                                    <span class="text-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Unable to decrypt credit card
+                                    </span>
+                                    <small class="text-muted d-block">Please update your credit card information</small>
+                                }
+                                else if (!string.IsNullOrEmpty(Model.DecryptedCreditCard))
+                                {
+                                    <span class="text-primary fw-bold" id="cardDisplay">@Model.DecryptedCreditCard</span>
+                                }
+                                else
+                                {
+                                    <span class="text-warning">No credit card on file</span>
+                                }
                             </div>
                         </div>
                         <div class="row mb-3">

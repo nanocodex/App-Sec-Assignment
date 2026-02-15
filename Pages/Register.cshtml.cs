@@ -17,6 +17,7 @@ namespace WebApplication1.Pages
         private readonly IAuditService _auditService;
         private readonly IReCaptchaService _reCaptchaService;
         private readonly IInputSanitizationService _sanitizationService;
+        private readonly IPasswordManagementService _passwordManagement;
         private readonly ILogger<RegisterModel> _logger;
 
         public RegisterModel(
@@ -27,6 +28,7 @@ namespace WebApplication1.Pages
             IAuditService auditService,
             IReCaptchaService reCaptchaService,
             IInputSanitizationService sanitizationService,
+            IPasswordManagementService passwordManagement,
             ILogger<RegisterModel> logger)
         {
             _userManager = userManager;
@@ -36,6 +38,7 @@ namespace WebApplication1.Pages
             _auditService = auditService;
             _reCaptchaService = reCaptchaService;
             _sanitizationService = sanitizationService;
+            _passwordManagement = passwordManagement;
             _logger = logger;
         }
 
@@ -61,14 +64,14 @@ namespace WebApplication1.Pages
                 }
 
                 // Additional security checks for XSS and SQL injection attempts
+                // Note: Address fields are allowed special characters and are HTML-encoded for safety
                 var fieldsToCheck = new Dictionary<string, string>
                 {
                     { "FirstName", RModel.FirstName },
                     { "LastName", RModel.LastName },
                     { "Email", RModel.Email },
-                    { "Mobile", RModel.Mobile },
-                    { "Billing", RModel.Billing },
-                    { "Shipping", RModel.Shipping }
+                    { "Mobile", RModel.Mobile }
+                    // Billing and Shipping are checked by AddressValidationAttribute and HTML-encoded
                 };
 
                 foreach (var field in fieldsToCheck)
@@ -96,6 +99,15 @@ namespace WebApplication1.Pages
                 var sanitizedShipping = _sanitizationService.SanitizeInput(RModel.Shipping);
                 var sanitizedEmail = _sanitizationService.SanitizeInput(RModel.Email);
                 var sanitizedCreditCard = _sanitizationService.SanitizeInput(RModel.CreditCard);
+
+                // Remove spaces from mobile and credit card for database storage (security best practice)
+                // Spaces are for display formatting only - we store the raw digits
+                sanitizedMobile = sanitizedMobile.Replace(" ", "");
+                sanitizedCreditCard = sanitizedCreditCard.Replace(" ", "");
+
+                // Aggressively HTML-encode address fields to encode ALL special characters
+                var encodedBilling = _sanitizationService.AggressiveHtmlEncode(sanitizedBilling);
+                var encodedShipping = _sanitizationService.AggressiveHtmlEncode(sanitizedShipping);
 
                 // Validate photo is actually a JPG/JPEG
                 if (RModel.Photo != null)
@@ -156,15 +168,22 @@ namespace WebApplication1.Pages
                     LastName = sanitizedLastName,
                     CreditCard = _encryptionService.Encrypt(sanitizedCreditCard),
                     Mobile = sanitizedMobile,
-                    Billing = sanitizedBilling,
-                    Shipping = sanitizedShipping,
-                    PhotoPath = photoPath
+                    Billing = encodedBilling,  // HTML-encoded for XSS prevention
+                    Shipping = encodedShipping,  // HTML-encoded for XSS prevention
+                    PhotoPath = photoPath,
+                    LastPasswordChangeDate = DateTime.UtcNow,
+                    PasswordExpiryDate = DateTime.UtcNow.AddDays(90),
+                    MustChangePassword = false
                 };
 
                 var result = await _userManager.CreateAsync(user, RModel.Password);
 
                 if (result.Succeeded)
                 {
+                    // Add password to history
+                    var passwordHash = _userManager.PasswordHasher.HashPassword(user, RModel.Password);
+                    await _passwordManagement.AddPasswordToHistoryAsync(user.Id, passwordHash);
+
                     var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
                     var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
 

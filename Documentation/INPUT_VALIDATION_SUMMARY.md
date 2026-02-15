@@ -77,6 +77,13 @@
   - Server-side: `[CreditCard]` attribute
   - Encryption: `Services/EncryptionService.cs`
 
+**Valid Test Numbers** (all pass Luhn algorithm):
+- **Visa**: `4111 1111 1111 1111` (recommended for testing)
+- **Visa**: `4012 8888 8888 1881` (alternative)
+- **Mastercard**: `5425 2334 3010 9903`
+- **Amex**: `3782 822463 10005`
+- **Discover**: `6011 1111 1111 1117`
+
 #### Password Validation ?
 - Minimum 12 characters
 - At least 1 lowercase, uppercase, number, special character
@@ -196,7 +203,7 @@ user.CreditCard = _encryptionService.Encrypt(sanitizedCreditCard);
 7. ? `Attributes/NameValidationAttribute.cs` - Name format
 8. ? `wwwroot/js/input-validation.js` - Client-side validation
 9. ? `INPUT_VALIDATION_IMPLEMENTATION_GUIDE.md` - Documentation
-10. ? `INPUT_VALIDATION_TESTING_GUIDE.md` - Testing guide
+10. ? `INPUT VALIDATION_TESTING_GUIDE.md` - Testing guide
 
 ### Files Modified (6)
 1. ? `Program.cs` - Service registration + security headers
@@ -284,6 +291,8 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
    - Try XSS: `<script>alert('XSS')</script>` in name
    - Try invalid mobile: `1234567`
    - Try weak password: `Pass123`
+   - Try invalid credit card: `1234 5678 9012 3456` (fails Luhn)
+   - Try valid credit card: `4111 1111 1111 1111` (passes Luhn)
    - Try valid data and submit
 
 Refer to `INPUT_VALIDATION_TESTING_GUIDE.md` for comprehensive test scenarios.
